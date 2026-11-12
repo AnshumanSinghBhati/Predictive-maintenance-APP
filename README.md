@@ -9,17 +9,12 @@ A single-file, interactive web app that estimates the **probability of machine f
 ```
 .
 ├── index.html        # The complete app (HTML + CSS + JS + embedded model) — open this
-├── src/
-│   ├── styles.css    # All CSS, extracted from index.html
-│   ├── app.js        # All application JavaScript, extracted from index.html
-│   └── model.json    # The embedded Random Forest + dataset stats, extracted from index.html
 ├── apk/
 │   └── Predictive_Maintenance_of_Industrial_Machines.apk   # Android build
 └── README.md
 ```
 
-`index.html` is the source of truth. The files in `src/` are the same code split out so it is easy to read and diff — `styles.css` and `app.js` are byte-for-byte what is inside `index.html`, and `model.json` is the parsed content of its `<script id="DATA">` block.
-
+`index.html` is the source of truth. 
 ---
 
 ## What the app does
