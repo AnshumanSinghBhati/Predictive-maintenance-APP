@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Predictive Maintenance of Industrial Machines</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#0f1319; --panel:#161c25; --panel2:#1b222d; --line:#2a3441;
+  --ink:#e8edf3; --muted:#8b98a9; --accent:#3ecf8e; --warn:#e0a940; --crit:#e0563f;
+  --mono:'JetBrains Mono',monospace; --sans:'Inter',system-ui,sans-serif;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+  box-sizing:border-box;
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){--bg:#f3f5f7;--panel:#ffffff;--panel2:#f7f9fb;--line:#dde3e9;--ink:#1a2230;--muted:#5c6b7d;}
+}
+:root[data-theme="dark"]{--bg:#0f1319;--panel:#161c25;--panel2:#1b222d;--line:#2a3441;--ink:#e8edf3;--muted:#8b98a9;}
+*{box-sizing:border-box;}
+html{scroll-padding-top:env(safe-area-inset-top,0px);}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased;}
+.wrap{max-width:1100px;margin:0 auto;padding:20px 16px 60px;}
+header.app{padding-top:calc(14px + env(safe-area-inset-top,0px));display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:16px;margin-bottom:20px;}
+h1{font-size:22px;margin:0;font-weight:700;letter-spacing:-0.01em;}
+.sub{color:var(--muted);font-size:13px;margin-top:4px;}
+nav.tabs{display:flex;gap:4px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:4px;}
+nav.tabs button{background:transparent;border:0;color:var(--muted);font-family:var(--sans);font-size:13px;font-weight:600;padding:8px 14px;border-radius:7px;cursor:pointer;}
+nav.tabs button.active{background:var(--panel);color:var(--ink);}
+.grid{display:grid;grid-template-columns:340px 1fr;gap:16px;}
+@media (max-width:820px){.grid{grid-template-columns:1fr;}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;}
+.card h2{font-size:13px;text-transform:none;color:var(--muted);margin:0 0 14px;font-weight:600;}
+.gaugewrap{display:flex;flex-direction:column;align-items:center;gap:6px;}
+.riskpct{font-family:var(--mono);font-size:42px;font-weight:700;margin-top:-96px;}
+.statuspill{display:inline-block;padding:5px 14px;border-radius:20px;font-size:13px;font-weight:600;margin-top:6px;}
+.slider-row{margin-bottom:16px;}
+.slider-row .lbl{display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;}
+.slider-row .lbl b{font-weight:600;}
+.slider-row .val{font-family:var(--mono);color:var(--accent);}
+input[type=range]{width:100%;accent-color:var(--accent);}
+.range-minmax{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:2px;}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
+.chip{background:var(--panel2);border:1px solid var(--line);color:var(--ink);font-size:12px;padding:7px 11px;border-radius:8px;cursor:pointer;font-family:var(--sans);}
+.chip:hover{border-color:var(--accent);}
+.kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:16px;}
+.kpi{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px;}
+.kpi .k{font-size:11px;color:var(--muted);margin-bottom:4px;}
+.kpi .v{font-family:var(--mono);font-size:17px;font-weight:700;}
+.explain{font-size:13px;line-height:1.5;color:var(--ink);}
+.explain .row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line);}
+.explain .row:last-child{border-bottom:0;}
+.chartbox{position:relative;height:220px;}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+@media (max-width:700px){.two-col{grid-template-columns:1fr;}}
+.note{font-size:12px;color:var(--muted);line-height:1.6;margin-top:10px;}
+.note b{color:var(--ink);}
+table.metrics{width:100%;border-collapse:collapse;font-size:13px;}
+table.metrics td{padding:7px 4px;border-bottom:1px solid var(--line);}
+table.metrics td:first-child{color:var(--muted);}
+table.metrics td:last-child{text-align:right;font-family:var(--mono);font-weight:600;}
+.disclaimer{background:var(--panel2);border:1px solid var(--warn);border-radius:10px;padding:12px 14px;font-size:12.5px;color:var(--ink);margin-top:20px;}
+select.pickfeat{background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-family:var(--sans);font-size:12px;}
+.tabpanel{display:none;}
+.tabpanel.active{display:block;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="app">
+    <div>
+      <h1>Predictive Maintenance of Industrial Machines</h1>
+      <div class="sub">Machine Failure Risk Monitoring — offline ML inference, no server calls</div>
+    </div>
+    <nav class="tabs">
+      <button data-tab="dash" class="active">Dashboard</button>
+      <button data-tab="analytics">Analytics</button>
+      <button data-tab="model">Model &amp; Dataset</button>
+    </nav>
+  </header>
+
+  <div id="dash" class="tabpanel active">
+    <div class="grid">
+      <div class="card">
+        <h2>Machine failure risk</h2>
+        <div class="gaugewrap">
+          <canvas id="gauge" width="220" height="140"></canvas>
+          <div class="riskpct" id="riskpct">--%</div>
+          <div class="statuspill" id="statuspill">--</div>
+        </div>
+        <div class="note" id="statusthresh"></div>
+        <div class="btnrow">
+          <button class="chip" data-preset="normal">Normal machine</button>
+          <button class="chip" data-preset="wear">Moderate wear</button>
+          <button class="chip" data-preset="hot">High temperature</button>
+          <button class="chip" data-preset="toolwear">High tool wear</button>
+          <button class="chip" data-preset="speed">High-speed op</button>
+          <button class="chip" data-preset="reset">Reset inputs</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Sensor inputs</h2>
+        <div id="sliders"></div>
+        <div class="kpis" id="kpis"></div>
+        <h2 style="margin-top:6px;">Why is the risk changing?</h2>
+        <div class="explain" id="explain"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="analytics" class="tabpanel">
+    <div class="two-col">
+      <div class="card"><h2>Normal vs. failure (reconstructed dataset, n=10,000)</h2><div class="chartbox"><canvas id="pie"></canvas></div></div>
+      <div class="card"><h2>Model feature importance (measured, Random Forest)</h2><div class="chartbox"><canvas id="fi"></canvas></div></div>
+    </div>
+    <div class="two-col" style="margin-top:16px;">
+      <div class="card">
+        <h2>Failure risk vs. parameter &nbsp;
+          <select class="pickfeat" id="riskFeat"></select>
+        </h2>
+        <div class="chartbox"><canvas id="riskcurve"></canvas></div>
+        <div class="note">All other sliders held at current values; the selected parameter is swept across its observed range and re-run through the real model.</div>
+      </div>
+      <div class="card">
+        <h2>Current value vs. dataset distribution &nbsp;
+          <select class="pickfeat" id="distFeat"></select>
+        </h2>
+        <div class="chartbox"><canvas id="disthist"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="model" class="tabpanel">
+    <div class="two-col">
+      <div class="card">
+        <h2>Dataset &amp; model transparency</h2>
+        <table class="metrics" id="datasetTable"></table>
+      </div>
+      <div class="card">
+        <h2>Model information — held-out test set</h2>
+        <table class="metrics" id="modelTable"></table>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px;">
+      <h2>Dataset limitations &amp; honesty notes</h2>
+      <div class="note" id="limits" style="font-size:13px;"></div>
+    </div>
+    <div class="disclaimer">This application is an educational predictive-maintenance demonstration and should not be used as the sole basis for real industrial safety or maintenance decisions.</div>
+  </div>
+</div>
+
+<script id="DATA" type="application/json">{"trees":[[29,2,1309.5,1,16,0.483,4,194.5,2,9,0.622,2,895.5,3,6,0.391,3,41.707,4,5,0.634,-2,-2.0,-1,-1,0.963,-2,-2.0,-1,-1,0.322,1,309.214,7,8,0.317,-2,-2.0,-1,-1,0.431,-2,-2.0,-1,-1,0.132,1,307.138,10,13,0.935,4,202.5,11,12,0.844,-2,-2.0,-1,-1,0.0,-2,-2.0,-1,-1,0.879,2,1110.5,14,15,0.945,-2,-2.0,-1,-1,0.971,-2,-2.0,-1,-1,0.906,4,199.5,17,24,0.372,2,2192.5,18,21,0.239,3,46.115,19,20,0.097,-2,-2.0,-1,-1,0.055,-2,-2.0,-1,-1,0.316,2,2999.0,22,23,0.545,-2,-2.0,-1,-1,0.466,-2,-2.0,-1,-1,0.7,2,1336.5,25,26,0.769,-2,-2.0,-1,-1,0.0,0,302.444,27,28,0.778,-2,-2.0,-1,-1,0.803,-2,-2.0,-1,-1,0.662],[25,3,51.408,1,14,0.525,3,14.911,2,7,0.451,3,10.861,3,4,0.937,-2,-2.0,-1,-1,1.0,0,298.935,5,6,0.702,-2,-2.0,-1,-1,0.894,-2,-2.0,-1,-1,0.49,4,194.5,8,11,0.431,3,42.693,9,10,0.283,-2,-2.0,-1,-1,0.337,-2,-2.0,-1,-1,0.117,3,46.674,12,13,0.802,-2,-2.0,-1,-1,0.779,-2,-2.0,-1,-1,0.889,3,64.748,15,20,0.762,0,297.669,16,17,0.738,-2,-2.0,-1,-1,0.0,3,63.537,18,19,0.746,-2,-2.0,-1,-1,0.753,-2,-2.0,-1,-1,0.0,1,306.882,21,22,0.936,-2,-2.0,-1,-1,0.0,4,99.0,23,24,0.95,-2,-2.0,-1,-1,0.0,-2,-2.0,-1,-1,0.992],[25,3,55.938,1,16,0.502,4,199.5,2,9,0.457,2,995.5,3,6,0.276,0,298.47,4,5,0.646,-2,-2.0,-1,-1,0.787,-2,-2.0,-1,-1,0.571,0,299.546,7,8,0.218,-2,-2.0,-1,-1,0.173,-2,-2.0,-1,-1,0.277,2,1313.0,10,13,0.845,0,303.202,11,12,0.917,-2,-2.0,-1,-1,0.925,-2,-2.0,-1,-1,0.0,4,240.0,14,15,0.799,-2,-2.0,-1,-1,0.928,-2,-2.0,-1,-1,0.28,0,303.57,17,24,0.805,0,299.435,18,21,0.819,4,179.5,19,20,0.746,-2,-2.0,-1,-1,0.0,-2,-2.0,-1,-1,0.988,4,79.0,22,23,0.88,-2,-2.0,-1,-1,0.414,-2,-2.0,-1,-1,0.938,-2,-2.0,-1,-1,0.0],[25,0,303.716,1,16,0.473,0,299.811,2,9,0.485,3,50.989,3,6,0.45,2,896.0,4,5,0.387,-2,-2.0,-1,-1,0.834,-2,-2.0,-1,-1,0.348,3,70.344,7,8,0.676,-2,-2.0,-1,-1,0.659,-2,-2.0,-1,-1,0.914,4,186.5,10,13,0.549,0,300.81,11,12,0.34,-2,-2.0,-1,-1,0.537,-2,-2.0,-1,-1,0.213,2,1329.0,14,15,0.865,-2,-2.0,-1,-1,0.943,-2,-2.0,-1,-1,0.704,0,304.922,17,20,0.195,4,1.5,18,19,0.0,-2,-2.0,-1,-1,0.0,-2,-2.0,-1,-1,0.0,4,132.0,21,22,0.634,-2,-2.0,-1,-1,0.0,1,316.007,23,24,0.883,-2,-2.0,-1,-1,0.969,-2,-2.0,-1,-1,0.779],[29,2,1053.5,1,16,0.486,0,302.361,2,9,0.702,0,300.249,3,6,0.745,4,179.5,4,5,0.711,-2,-2.0,-1,-1,0.346,-2,-2.0,-1,-1,0.966,1,311.692,7,8,0.878,-2,-2.0,-1,-1,0.969,-2,-2.0,-1,-1,0.768,4,201.5,10,13,0.316,3,41.727,11,12,0.111,-2,-2.0,-1,-1,0.602,-2,-2.0,-1,-1,0.0,3,52.287,14,15,0.83,-2,-2.0,-1,-1,0.0,-2,-2.0,-1,-1,0.984,3,51.413,17,24,0.431,4,199.5,18,21,0.391,1,312.228,19,20,0.256,-2,-2.0,-1,-1,0.294,-2,-2.0,-1,-1,0.127,4,240.5,22,23,0.769,-2,-2.0,-1,-1,0.926,-2,-2.0,-1,-1,0.172,1,307.529,25,26,0.688,-2,-2.0,-1,-1,0.0,1,307.56,27,28,0.716,-2,-2.0,-1,-1,0.977,-2,-2.0,-1,-1,0.698],[25,4,198.5,1,10,0.498,3,10.96,2,3,0.3,-2,-2.0,-1,-1,1.0,1,309.254,4,7,0.278,4,129.5,5,6,0.327,-2,-2.0,-1,-1,0.367,-2,-2.0,-1,-1,0.124,2,1030.5,8,9,0.197,-2,-2.0,-1,-1,0.507,-2,-2.0,-1,-1,0.129,3,51.396,11,18,0.874,4,247.0,12,15,0.807,1,314.794,13,14,0.926,-2,-2.0,-1,-1,0.931,-2,-2.0,-1,-1,0.0,0,299.147,16,17,0.145,-2,-2.0,-1,-1,0.0,-2,-2.0,-1,-1,0.241,3,55.527,19,22,0.984,4,212.0,20,21,0.971,-2,-2.0,-1,-1,0.0,-2,-2.0,-1,-1,0.989,4,220.5,23,24,0.995,-2,-2.0,-1,-1,0.979,-2,-2.0,-1,-1,1.0],[31,2,1228.5,1,16,0.514,4,188.5,2,9,0.687,0,299.953,3,6,0.394,2,895.5,4,5,0.275,-2,-2.0,-1,-1,0.617,-2,-2.0,-1,-1,0.125,3,41.598,7,8,0.549,-2,-2.0,-1,-1,0.836,-2,-2.0,-1,-1,0.289,4,198.5,10,13,0.952,4,196.0,11,12,0.765,-2,-2.0,-1,-1,0.819,-2,-2.0,-1,-1,0.0,3,50.953,14,15,0.964,-2,-2.0,-1,-1,0.906,-2,-2.0,-1,-1,0.986,4,197.5,17,24,0.401,4,78.5,18,21,0.235,2,2192.0,19,20,0.316,-2,-2.0,-1,-1,0.133,-2,-2.0,-1,-1,0.664,3,60.61,22,23,0.141,-2,-2.0,-1,-1,0.128,-2,-2.0,-1,-1,0.894,1,306.85,25,28,0.796,2,1322.5,26,27,0.352,-2,-2.0,-1,-1,0.702,-2,-2.0,-1,-1,0.0,4,240.5,29,30,0.807,-2,-2.0,-1,-1,0.927,-2,-2.0,-1,-1,0.316],[25,4,194.5,1,12,0.512,2,810.5,2,7,0.29,4,36.0,3,4,0.797,-2,-2.0,-1,-1,0.0,3,41.789,5,6,0.835,-2,-2.0,-1,-1,1.0,-2,-2.0,-1,-1,0.591,3,11.288,8,9,0.254,-2,-2.0,-1,-1,1.0,2,2235.0,10,11,0.234,-2,-2.0,-1,-1,0.197,-2,-2.0,-1,-1,0.426,4,240.5,13,18,0.873,3,13.883,14,15,0.934,-2,-2.0,-1,-1,0.0,4,199.5,16,17,0.934,-2,-2.0,-1,-1,0.722,-2,-2.0,-1,-1,0.948,1,314.526,19,22,0.747,1,306.93,20,21,0.759,-2,-2.0,-1,-1,0.52,-2,-2.0,-1,-1,0.771,0,304.74,23,24,0.391,-2,-2.0,-1,-1,0.0,-2,-2.0,-1,-1,0.955]],"fi":{"Air_temperature_K":0.049,"Process_temperature_K":0.0176,"Rotational_speed_rpm":0.1537,"Torque_Nm":0.1428,"Tool_wear_min":0.637},"val":{"precision":0.3333,"recall":0.6324,"f1":0.4365,"roc_auc":0.872,"pr_auc":0.4192,"cm":[[1346,86],[25,43]]},"test":{"precision":0.3897,"recall":0.791,"f1":0.5222,"roc_auc":0.9013,"pr_auc":0.4926,"cm":[[1350,83],[14,53]]},"n_train":7000,"n_val":1500,"n_test":1500,"n_total":10000,"n_fail":451,"fail_rate":4.51,"stats":{"Air_temperature_K":{"min":297.02,"max":305.53,"median":299.22,"p5":297.65,"p95":303.84},"Process_temperature_K":{"min":306.11,"max":316.56,"median":309.09,"p5":306.75,"p95":314.82},"Rotational_speed_rpm":{"min":800.0,"max":3000.0,"median":1493.0,"p5":901.0,"p95":2691.05},"Torque_Nm":{"min":3.0,"max":83.27,"median":39.89,"p5":23.3,"p95":56.48},"Tool_wear_min":{"min":0.0,"max":253.0,"median":92.0,"p5":9.0,"p95":253.0}},"hist":{"Air_temperature_K":{"e":[297.0,297.6,298.1,298.6,299.2,299.7,300.2,300.7,301.3,301.8,302.3,302.9,303.4,303.9,304.5,305.0,305.5],"c":[237,1027,1075,2382,1427,778,289,215,364,152,736,365,502,189,165,97]},"Process_temperature_K":{"e":[306.1,306.8,307.4,308.1,308.7,309.4,310.0,310.7,311.3,312.0,312.6,313.3,313.9,314.6,315.3,315.9,316.6],"c":[515,1131,962,1337,2088,688,357,82,65,158,399,631,956,246,290,95]},"Rotational_speed_rpm":{"e":[800.0,937.5,1075.0,1212.5,1350.0,1487.5,1625.0,1762.5,1900.0,2037.5,2175.0,2312.5,2450.0,2587.5,2725.0,2862.5,3000.0],"c":[655,792,1078,1175,1247,1103,962,701,584,373,297,246,182,132,102,371]},"Torque_Nm":{"e":[3.0,8.0,13.0,18.1,23.1,28.1,33.1,38.1,43.1,48.2,53.2,58.2,63.2,68.2,73.2,78.3,83.3],"c":[9,19,120,317,751,1246,1811,2007,1621,1128,609,263,76,19,2,2]},"Tool_wear_min":{"e":[0.0,15.8,31.6,47.4,63.2,79.1,94.9,110.7,126.5,142.3,158.1,173.9,189.8,205.6,221.4,237.2,253.0],"c":[867,854,879,898,805,846,895,864,876,326,281,310,310,207,88,694]}}}</script>
+<script>
+const DATA = JSON.parse(document.getElementById('DATA').textContent);
+const FEATS = ['Air_temperature_K','Process_temperature_K','Rotational_speed_rpm','Torque_Nm','Tool_wear_min'];
+const FLABEL = {Air_temperature_K:'Air Temperature',Process_temperature_K:'Process Temperature',Rotational_speed_rpm:'Rotational Speed',Torque_Nm:'Torque',Tool_wear_min:'Tool Wear'};
+const FUNIT = {Air_temperature_K:'K',Process_temperature_K:'K',Rotational_speed_rpm:'rpm',Torque_Nm:'Nm',Tool_wear_min:'min'};
+const FSTEP = {Air_temperature_K:0.1,Process_temperature_K:0.1,Rotational_speed_rpm:1,Torque_Nm:0.1,Tool_wear_min:1};
+
+let x = {}; FEATS.forEach(f=> x[f] = DATA.stats[f].median);
+
+function evalTree(t, xa){
+  let i=0;
+  while(true){
+    const b = 1+i*5;
+    const f=t[b], th=t[b+1], l=t[b+2], r=t[b+3], v=t[b+4];
+    if(l===-1) return v;
+    i = xa[f] <= th ? l : r;
+  }
+}
+function predict(xobj){
+  const xa = FEATS.map(f=>xobj[f]);
+  let s=0; DATA.trees.forEach(t=> s+=evalTree(t,xa));
+  return s/DATA.trees.length;
+}
+function statusFor(p){
+  if(p<0.05) return ['Normal','var(--accent)'];
+  if(p<0.15) return ['Low Risk','var(--accent)'];
+  if(p<0.35) return ['Moderate Risk','var(--warn)'];
+  if(p<0.65) return ['High Risk','var(--warn)'];
+  return ['Critical','var(--crit)'];
+}
+
+// ---- gauge (simple canvas donut) ----
+const gctx = document.getElementById('gauge').getContext('2d');
+function drawGauge(p){
+  const c=gctx, W=220,H=140,cx=110,cy=120,r=95;
+  c.clearRect(0,0,W,H);
+  c.lineWidth=16; c.lineCap='round';
+  c.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--line');
+  c.beginPath(); c.arc(cx,cy,r,Math.PI,2*Math.PI); c.stroke();
+  const [,color] = statusFor(p);
+  c.strokeStyle = color.trim().startsWith('var')? getComputedStyle(document.documentElement).getPropertyValue(color.replace('var(','').replace(')','')) : color;
+  c.beginPath(); c.arc(cx,cy,r,Math.PI, Math.PI + Math.PI*Math.min(p,1)); c.stroke();
+}
+
+// ---- sliders ----
+const slidersEl = document.getElementById('sliders');
+FEATS.forEach(f=>{
+  const s = DATA.stats[f];
+  const row = document.createElement('div'); row.className='slider-row';
+  row.innerHTML = `<div class="lbl"><b>${FLABEL[f]}</b><span class="val" id="val_${f}"></span></div>
+    <input type="range" id="sl_${f}" min="${s.min}" max="${s.max}" step="${FSTEP[f]}" value="${x[f]}">
+    <div class="range-minmax"><span>${s.min} ${FUNIT[f]}</span><span>dataset median: ${s.median}</span><span>${s.max} ${FUNIT[f]}</span></div>`;
+  slidersEl.appendChild(row);
+});
+FEATS.forEach(f=>{
+  document.getElementById('sl_'+f).addEventListener('input', e=>{
+    x[f] = parseFloat(e.target.value); update();
+  });
+});
+
+function fmt(v,d=1){return Number(v).toFixed(d);}
+
+function update(){
+  FEATS.forEach(f=> document.getElementById('val_'+f).textContent = fmt(x[f], FSTEP[f]<1?1:0)+' '+FUNIT[f]);
+  const p = predict(x);
+  const [label,colorVar] = statusFor(p);
+  document.getElementById('riskpct').textContent = (p*100).toFixed(1)+'%';
+  const pill = document.getElementById('statuspill');
+  pill.textContent = label;
+  pill.style.background = colorVar; pill.style.color = '#0f1319';
+  drawGauge(p);
+  renderKPIs(p,label);
+  renderExplain();
+  if(window._riskChart) updateRiskCurve();
+  if(window._distChart) updateDistChart();
+}
+
+function renderKPIs(p,label){
+  const el = document.getElementById('kpis');
+  const items = [
+    ['Failure Risk',(p*100).toFixed(1)+'%'],
+    ['Status',label],
+    ['Model F1 (test)', DATA.test.f1],
+    ['Recall (test)', DATA.test.recall],
+    ['ROC-AUC (test)', DATA.test.roc_auc],
+    ['Dataset Samples', DATA.n_total.toLocaleString()],
+    ['Failure Samples', DATA.n_fail.toLocaleString()],
+  ];
+  el.innerHTML = items.map(([k,v])=>`<div class="kpi"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
+}
+
+function renderExplain(){
+  // heuristic: |z-score from median| * measured feature importance, most-shifted first
+  const rows = FEATS.map(f=>{
+    const s = DATA.stats[f];
+    const spread = (s.p95-s.p5)/2 || 1;
+    const z = (x[f]-s.median)/spread;
+    return {f, contrib: Math.abs(z)*DATA.fi[f], dir: z>=0?'increased':'decreased'};
+  }).sort((a,b)=>b.contrib-a.contrib).slice(0,4);
+  document.getElementById('explain').innerHTML = rows.map(r=>
+    `<div class="row"><span>${FLABEL[r.f]} ${r.dir} vs. baseline</span><span>contributed ${(r.contrib*100).toFixed(0)}%</span></div>`
+  ).join('') + '<div class="note">Heuristic contribution = distance from the dataset median, weighted by the Random Forest\'s measured feature importance. This indicates association with the model\'s prediction, not proven causation.</div>';
+}
+
+// ---- presets (derived from real dataset percentiles) ----
+const S = DATA.stats;
+const presets = {
+  normal: {Air_temperature_K:S.Air_temperature_K.median, Process_temperature_K:S.Process_temperature_K.median, Rotational_speed_rpm:S.Rotational_speed_rpm.median, Torque_Nm:S.Torque_Nm.median, Tool_wear_min:S.Tool_wear_min.p5},
+  wear: {Air_temperature_K:S.Air_temperature_K.median, Process_temperature_K:S.Process_temperature_K.median, Rotational_speed_rpm:S.Rotational_speed_rpm.median, Torque_Nm:S.Torque_Nm.median, Tool_wear_min:150},
+  hot: {Air_temperature_K:S.Air_temperature_K.p95, Process_temperature_K:S.Process_temperature_K.p95, Rotational_speed_rpm:S.Rotational_speed_rpm.p5, Torque_Nm:S.Torque_Nm.median, Tool_wear_min:S.Tool_wear_min.median},
+  toolwear: {Air_temperature_K:S.Air_temperature_K.median, Process_temperature_K:S.Process_temperature_K.median, Rotational_speed_rpm:S.Rotational_speed_rpm.median, Torque_Nm:S.Torque_Nm.p95, Tool_wear_min:S.Tool_wear_min.p95},
+  speed: {Air_temperature_K:S.Air_temperature_K.median, Process_temperature_K:S.Process_temperature_K.median, Rotational_speed_rpm:S.Rotational_speed_rpm.p95, Torque_Nm:S.Torque_Nm.p5, Tool_wear_min:S.Tool_wear_min.median},
+  reset: {Air_temperature_K:S.Air_temperature_K.median, Process_temperature_K:S.Process_temperature_K.median, Rotational_speed_rpm:S.Rotational_speed_rpm.median, Torque_Nm:S.Torque_Nm.median, Tool_wear_min:S.Tool_wear_min.median},
+};
+document.querySelectorAll('[data-preset]').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const p = presets[btn.dataset.preset];
+    FEATS.forEach(f=>{ x[f]=p[f]; document.getElementById('sl_'+f).value = p[f]; });
+    update();
+  });
+});
+
+// ---- tabs ----
+document.querySelectorAll('nav.tabs button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tabpanel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ---- analytics charts ----
+const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--line');
+const inkColor = getComputedStyle(document.documentElement).getPropertyValue('--ink');
+Chart.defaults.color = inkColor; Chart.defaults.borderColor = gridColor; Chart.defaults.font.family = "Inter, system-ui, sans-serif";
+
+new Chart(document.getElementById('pie'), {
+  type:'doughnut',
+  data:{labels:['Normal','Failure'], datasets:[{data:[DATA.n_total-DATA.n_fail, DATA.n_fail], backgroundColor:['#3ecf8e','#e0563f']}]},
+  options:{plugins:{legend:{position:'bottom'}}}
+});
+
+new Chart(document.getElementById('fi'), {
+  type:'bar',
+  data:{labels:FEATS.map(f=>FLABEL[f]), datasets:[{data:FEATS.map(f=>DATA.fi[f]), backgroundColor:'#3ecf8e'}]},
+  options:{indexAxis:'y', plugins:{legend:{display:false}}, scales:{x:{grid:{color:gridColor}},y:{grid:{display:false}}}}
+});
+
+const riskFeatSel = document.getElementById('riskFeat');
+const distFeatSel = document.getElementById('distFeat');
+FEATS.forEach(f=>{
+  riskFeatSel.innerHTML += `<option value="${f}">${FLABEL[f]}</option>`;
+  distFeatSel.innerHTML += `<option value="${f}">${FLABEL[f]}</option>`;
+});
+riskFeatSel.value='Tool_wear_min'; distFeatSel.value='Tool_wear_min';
+
+window._riskChart = new Chart(document.getElementById('riskcurve'), {
+  type:'line',
+  data:{labels:[], datasets:[{data:[], borderColor:'#3ecf8e', backgroundColor:'transparent', pointRadius:0, tension:0.25}]},
+  options:{plugins:{legend:{display:false}}, scales:{y:{min:0,max:1,ticks:{callback:v=>(v*100)+'%'},grid:{color:gridColor}},x:{grid:{display:false}}}}
+});
+function updateRiskCurve(){
+  const f = riskFeatSel.value; const s = DATA.stats[f];
+  const N=24; const labels=[]; const data=[];
+  for(let i=0;i<=N;i++){
+    const v = s.min + (s.max-s.min)*i/N;
+    const xt = Object.assign({}, x, {[f]:v});
+    labels.push(fmt(v,0)); data.push(predict(xt));
+  }
+  window._riskChart.data.labels = labels;
+  window._riskChart.data.datasets[0].data = data;
+  window._riskChart.update();
+}
+riskFeatSel.addEventListener('change', updateRiskCurve);
+
+window._distChart = new Chart(document.getElementById('disthist'), {
+  type:'bar',
+  data:{labels:[], datasets:[{data:[], backgroundColor:'#8b98a966'}]},
+  options:{plugins:{legend:{display:false}}, scales:{x:{grid:{display:false}},y:{grid:{color:gridColor}}}}
+});
+function updateDistChart(){
+  const f = distFeatSel.value; const h = DATA.hist[f];
+  const labels = h.e.slice(0,-1).map((e,i)=>fmt((e+h.e[i+1])/2,0));
+  window._distChart.data.labels = labels;
+  window._distChart.data.datasets[0].data = h.c;
+  const curIdx = Math.min(labels.length-1, Math.max(0, Math.round((x[f]-DATA.stats[f].min)/(DATA.stats[f].max-DATA.stats[f].min)*(labels.length-1))));
+  window._distChart.data.datasets[0].backgroundColor = labels.map((_,i)=> i===curIdx? '#3ecf8e':'#8b98a966');
+  window._distChart.update();
+}
+distFeatSel.addEventListener('change', updateDistChart);
+
+// ---- model/dataset tables ----
+document.getElementById('datasetTable').innerHTML = `
+  <tr><td>Dataset</td><td>AI4I 2020 Predictive Maintenance (reconstructed)</td></tr>
+  <tr><td>Source</td><td>UCI ML Repository, DOI 10.24432/C5HS5C</td></tr>
+  <tr><td>License</td><td>CC BY 4.0</td></tr>
+  <tr><td>Target</td><td>Machine failure (binary)</td></tr>
+  <tr><td>Features used</td><td>Air/Process temperature, Rotational speed, Torque, Tool wear</td></tr>
+  <tr><td>Not in dataset</td><td>Vibration, Pressure — not part of AI4I 2020</td></tr>
+  <tr><td>Rows (this build)</td><td>${DATA.n_total.toLocaleString()}</td></tr>
+  <tr><td>Failure rate</td><td>${DATA.fail_rate}%</td></tr>
+  <tr><td>Train / Val / Test</td><td>${DATA.n_train} / ${DATA.n_val} / ${DATA.n_test}</td></tr>
+`;
+document.getElementById('modelTable').innerHTML = `
+  <tr><td>Algorithm</td><td>Random Forest (8 trees, depth 4)</td></tr>
+  <tr><td>Selected over</td><td>Logistic Regression (lower F1/PR-AUC on this data)</td></tr>
+  <tr><td>Precision</td><td>${DATA.test.precision}</td></tr>
+  <tr><td>Recall</td><td>${DATA.test.recall}</td></tr>
+  <tr><td>F1-score</td><td>${DATA.test.f1}</td></tr>
+  <tr><td>ROC-AUC</td><td>${DATA.test.roc_auc}</td></tr>
+  <tr><td>PR-AUC</td><td>${DATA.test.pr_auc}</td></tr>
+  <tr><td>Confusion matrix (test)</td><td>TN ${DATA.test.cm[0][0]} / FP ${DATA.test.cm[0][1]} / FN ${DATA.test.cm[1][0]} / TP ${DATA.test.cm[1][1]}</td></tr>
+`;
+document.getElementById('limits').innerHTML = `
+  <p><b>Dataset reconstruction:</b> This sandbox has no network access to download the original 10,000-row <code>ai4i2020.csv</code> file. The data used here was <b>reconstructed</b> from AI4I 2020's published generation methodology and documented failure-mode thresholds (Matzka, 2020 / UCI dataset page), not copied from the original file. Feature ranges, the exact per-row rotational-speed/torque coupling, and resulting failure counts will differ somewhat from the original CSV — this is disclosed, not hidden.</p>
+  <p><b>Model:</b> Random Forest probabilities are genuinely computed in your browser from the trees trained above — not a hard-coded formula. Feature importance and all metrics on this page were measured on a held-out test split of the reconstructed data, not invented.</p>
+  <p><b>Risk status thresholds</b> (Normal &lt;5%, Low &lt;15%, Moderate &lt;35%, High &lt;65%, Critical ≥65%) are operator-style bands chosen for readability over the model's predicted probability; they are not statistically derived cut points from the source publication.</p>
+  <p><b>No vibration or pressure sensors:</b> the AI4I 2020 dataset does not include these, so they are intentionally absent from this app rather than fabricated.</p>
+`;
+document.getElementById('statusthresh').textContent = 'Thresholds: Normal <5%, Low <15%, Moderate <35%, High <65%, Critical ≥65% (see Model & Dataset tab)';
+
+update();
+</script>
+</body>
+</html>
